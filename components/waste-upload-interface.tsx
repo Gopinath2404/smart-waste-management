@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Upload, Camera, FileImage, Loader2 } from "lucide-react"
+import { Upload, Camera, FileImage, Loader2, Wifi, WifiOff } from "lucide-react"
 
 interface ClassificationResult {
   type: string
@@ -19,27 +19,27 @@ const mockClassifyWaste = async (imageData: string): Promise<ClassificationResul
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 2000))
 
-  // Mock classification results
+  // Mock classification results with updated color scheme
   const results = [
     {
       type: "Biodegradable",
       item: "Food waste",
       icon: "Leaf",
-      color: "text-chart-1",
+      color: "text-red-500", // Updated to red color for biodegradable
       confidence: Math.floor(Math.random() * 20) + 80,
     },
     {
       type: "Non-Biodegradable",
       item: "Plastic bottle",
       icon: "Trash2",
-      color: "text-chart-2",
+      color: "text-blue-500", // Updated to blue color for non-biodegradable
       confidence: Math.floor(Math.random() * 20) + 75,
     },
     {
       type: "E-Waste",
       item: "Electronic device",
       icon: "Zap",
-      color: "text-chart-3",
+      color: "text-orange-500", // Updated to orange color for e-waste
       confidence: Math.floor(Math.random() * 20) + 85,
     },
     {
@@ -63,6 +63,7 @@ export function WasteUploadInterface({ onClassificationComplete }: WasteUploadIn
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [isClassifying, setIsClassifying] = useState(false)
   const [classificationResult, setClassificationResult] = useState<ClassificationResult | null>(null)
+  const [hardwareConnected, setHardwareConnected] = useState(true) // Added hardware connection status
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -127,15 +128,83 @@ export function WasteUploadInterface({ onClassificationComplete }: WasteUploadIn
     if (fileInput) fileInput.value = ""
   }
 
+  const handleHardwareCapture = async () => {
+    console.log("[v0] Attempting hardware capture...")
+    setIsClassifying(true)
+
+    try {
+      // Simulate hardware image capture
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      // Mock captured image from hardware
+      const mockHardwareImage = "/waste-item-captured-by-hardware-camera.jpg"
+      setUploadedImage(mockHardwareImage)
+
+      // Auto-classify hardware captured image
+      const result = await mockClassifyWaste(mockHardwareImage)
+      setClassificationResult(result)
+      onClassificationComplete?.(result)
+    } catch (error) {
+      console.error("Hardware capture failed:", error)
+    } finally {
+      setIsClassifying(false)
+    }
+  }
+
+  const toggleHardwareConnection = () => {
+    setHardwareConnected(!hardwareConnected)
+    console.log(`[v0] Hardware ${!hardwareConnected ? "connected" : "disconnected"}`)
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Upload className="w-5 h-5 text-accent" />
-          Waste Classification
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="w-5 h-5 text-accent" />
+            Waste Classification
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleHardwareConnection}
+            className={`flex items-center gap-2 ${hardwareConnected ? "text-green-600" : "text-red-500"}`}
+          >
+            {hardwareConnected ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+            {hardwareConnected ? "Hardware Connected" : "Hardware Offline"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
+        {hardwareConnected && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-800">Hardware Camera Ready</p>
+                <p className="text-xs text-green-600">Smart waste bin camera is connected</p>
+              </div>
+              <Button
+                onClick={handleHardwareCapture}
+                disabled={isClassifying}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                {isClassifying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Capturing...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-4 h-4 mr-2" />
+                    Capture from Hardware
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div
           className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
             dragActive ? "border-accent bg-accent/5" : "border-border hover:border-accent/50"
@@ -202,12 +271,46 @@ export function WasteUploadInterface({ onClassificationComplete }: WasteUploadIn
         {classificationResult && (
           <div className="mt-4 p-4 bg-accent/10 rounded-lg border border-accent/20">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 bg-accent/20 rounded-full flex items-center justify-center">
-                <span className="text-accent text-sm">✓</span>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  classificationResult.type === "Biodegradable"
+                    ? "bg-red-100"
+                    : classificationResult.type === "Non-Biodegradable"
+                      ? "bg-blue-100"
+                      : classificationResult.type === "E-Waste"
+                        ? "bg-orange-100"
+                        : "bg-accent/20"
+                }`}
+              >
+                <span
+                  className={`text-sm ${
+                    classificationResult.type === "Biodegradable"
+                      ? "text-red-600"
+                      : classificationResult.type === "Non-Biodegradable"
+                        ? "text-blue-600"
+                        : classificationResult.type === "E-Waste"
+                          ? "text-orange-600"
+                          : "text-accent"
+                  }`}
+                >
+                  ✓
+                </span>
               </div>
               <div>
                 <p className="font-medium text-sm">{classificationResult.item}</p>
-                <p className="text-xs text-muted-foreground">{classificationResult.type}</p>
+                <p
+                  className={`text-xs font-medium ${
+                    classificationResult.type === "Biodegradable"
+                      ? "text-red-600"
+                      : classificationResult.type === "Non-Biodegradable"
+                        ? "text-blue-600"
+                        : classificationResult.type === "E-Waste"
+                          ? "text-orange-600"
+                          : "text-muted-foreground"
+                  }`}
+                >
+                  {classificationResult.type}
+                </p>
               </div>
               <div className="ml-auto">
                 <span className="text-sm font-medium text-accent">{classificationResult.confidence}%</span>
